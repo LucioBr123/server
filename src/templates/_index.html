@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Orçamentos</title>
+    <style>
+        :root {
+            --primary: #3498db;
+            --secondary: #2ecc71;
+            --danger: #e74c3c;
+            --dark: #34495e;
+            --light: #ecf0f1;
+        }
+        
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: #f5f5f5;
+            color: #333;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 15px;
+        }
+        
+        header {
+            background-color: var(--dark);
+            color: white;
+            padding: 1rem;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .logo {
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+        
+        .nav-tabs {
+            display: flex;
+            background: white;
+            border-bottom: 1px solid #ddd;
+            overflow-x: auto;
+        }
+        
+        .tab-btn {
+            padding: 12px 20px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1rem;
+            white-space: nowrap;
+            border-bottom: 3px solid transparent;
+        }
+        
+        .tab-btn.active {
+            border-bottom-color: var(--primary);
+            color: var(--primary);
+            font-weight: bold;
+        }
+        
+        .tab-content {
+            display: none;
+            padding: 20px;
+            background: white;
+            border-radius: 0 0 5px 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+        
+        .btn-primary {
+            background-color: var(--primary);
+            color: white;
+        }
+        
+        .btn-success {
+            background-color: var(--secondary);
+            color: white;
+        }
+        
+        .btn-danger {
+            background-color: var(--danger);
+            color: white;
+        }
+        
+        .btn:hover {
+            opacity: 0.9;
+            transform: translateY(-2px);
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        
+        th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+        }
+        
+        tr:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+        
+        input, select, textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 1rem;
+        }
+        
+        .form-row {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        
+        .form-row .form-group {
+            flex: 1;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .modal-content {
+            background: white;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        
+        .modal-header {
+            padding: 15px 20px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .modal-body {
+            padding: 20px;
+        }
+        
+        .modal-footer {
+            padding: 15px 20px;
+            border-top: 1px solid #eee;
+            text-align: right;
+        }
+        
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border-left-color: var(--primary);
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .alert {
+            padding: 10px 15px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+        }
+        
+        .alert-success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .alert-error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        /* Mobile optimizations */
+        @media (max-width: 768px) {
+            .nav-tabs {
+                flex-wrap: nowrap;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+            
+            .tab-btn {
+                padding: 10px 15px;
+                font-size: 0.9rem;
+            }
+            
+            .form-row {
+                flex-direction: column;
+                gap: 0;
+            }
+            
+            th, td {
+                padding: 8px 5px;
+                font-size: 0.9rem;
+            }
+            
+            .btn {
+                padding: 8px 12px;
+                font-size: 0.9rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <div class="logo">Sistema de Orçamentos</div>
+            <div id="currentDate"></div>
+        </div>
+    </header>
+
+    <div class="nav-tabs">
+        <button class="tab-btn active" data-tab="dashboard">Dashboard</button>
+        <button class="tab-btn" data-tab="produtos">Produtos</button>
+        <button class="tab-btn" data-tab="receitas">Receitas</button>
+        <button class="tab-btn" data-tab="orcamentos">Orçamentos</button>
+    </div>
+
+    <div class="container">
+        <!-- Dashboard -->
+        <div id="dashboard" class="tab-content active">
+            <h2>Visão Geral</h2>
+            <div class="stats-container">
+                <div class="stat-card">
+                    <h3>Total de Produtos</h3>
+                    <p id="total-produtos">0</p>
+                </div>
+                <div class="stat-card">
+                    <h3>Total de Receitas</h3>
+                    <p id="total-receitas">0</p>
+                </div>
+                <div class="stat-card">
+                    <h3>Total de Orçamentos</h3>
+                    <p id="total-orcamentos">0</p>
+                </div>
+            </div>
+            
+            <div class="recent-section">
+                <h3>Últimos Produtos</h3>
+                <div id="recent-products" class="loading">
+                    <div class="spinner"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Produtos -->
+        <div id="produtos" class="tab-content">
+            <div class="page-header">
+                <h2>Gestão de Produtos</h2>
+                <button class="btn btn-primary" id="btn-add-produto">Adicionar Produto</button>
+            </div>
+            
+            <div id="alert-produtos"></div>
+            
+            <div id="produtos-list" class="loading">
+                <div class="spinner"></div>
+            </div>
+        </div>
+
+        <!-- Receitas -->
+        <div id="receitas" class="tab-content">
+            <div class="page-header">
+                <h2>Gestão de Receitas</h2>
+                <button class="btn btn-primary" id="btn-add-receita">Adicionar Receita</button>
+            </div>
+            
+            <div id="alert-receitas"></div>
+            
+            <div id="receitas-list" class="loading">
+                <div class="spinner"></div>
+            </div>
+        </div>
+
+        <!-- Orçamentos -->
+        <div id="orcamentos" class="tab-content">
+            <div class="page-header">
+                <h2>Gestão de Orçamentos</h2>
+                <button class="btn btn-primary" id="btn-add-orcamento">Criar Orçamento</button>
+            </div>
+            
+            <div id="alert-orcamentos"></div>
+            
+            <div id="orcamentos-list" class="loading">
+                <div class="spinner"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para Produto -->
+    <div id="produto-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modal-produto-title">Adicionar Produto</h3>
+                <button class="close-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="produto-form">
+                    <input type="hidden" id="produto-id">
+                    <div class="form-group">
+                        <label for="produto-descricao">Descrição</label>
+                        <input type="text" id="produto-descricao" required>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="produto-quantidade">Quantidade</label>
+                            <input type="number" step="0.001" id="produto-quantidade" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="produto-quantificacao">Quantificação</label>
+                            <input type="text" id="produto-quantificacao" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="produto-valor">Valor Unitário (R$)</label>
+                        <input type="number" step="0.01" id="produto-valor" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn" id="btn-cancel-produto">Cancelar</button>
+                <button class="btn btn-primary" id="btn-save-produto">Salvar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para Receita -->
+    <div id="receita-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modal-receita-title">Adicionar Receita</h3>
+                <button class="close-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="receita-form">
+                    <input type="hidden" id="receita-id">
+                    <div class="form-group">
+                        <label for="receita-nome">Nome</label>
+                        <input type="text" id="receita-nome" required>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="receita-tempo">Tempo de Preparo</label>
+                            <input type="text" id="receita-tempo">
+                        </div>
+                        <div class="form-group">
+                            <label for="receita-rendimento">Rendimento</label>
+                            <input type="text" id="receita-rendimento">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="receita-modo">Modo de Preparo</label>
+                        <textarea id="receita-modo" rows="4"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn" id="btn-cancel-receita">Cancelar</button>
+                <button class="btn btn-primary" id="btn-save-receita">Salvar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configurações
+        const API_BASE_URL = 'http://localhost:5000/';
+        let currentProdutoId = null;
+        let currentReceitaId = null;
+        let currentOrcamentoId = null;
+
+        // Elementos da UI
+        const tabBtns = document.querySelectorAll('.tab-btn');
+        const tabContents = document.querySelectorAll('.tab-content');
+        const currentDateEl = document.getElementById('currentDate');
+        
+        // Atualizar data atual
+        function updateCurrentDate() {
+            const now = new Date();
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            currentDateEl.textContent = now.toLocaleDateString('pt-BR', options);
+        }
+        
+        // Alternar entre abas
+        tabBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                // Remover classe ativa de todas as abas
+                tabBtns.forEach(b => b.classList.remove('active'));
+                tabContents.forEach(c => c.classList.remove('active'));
+                
+                // Adicionar classe ativa à aba clicada
+                btn.classList.add('active');
+                const tabId = btn.getAttribute('data-tab');
+                document.getElementById(tabId).classList.add('active');
+                
+                // Carregar dados se necessário
+                if (tabId === 'produtos') loadProdutos();
+                if (tabId === 'receitas') loadReceitas();
+                if (tabId === 'orcamentos') loadOrcamentos();
+            });
+        });
+        
+        // Funções de API
+        async function apiRequest(endpoint, method = 'GET', data = null) {
+            const url = API_BASE_URL + endpoint;
+            const options = {
+                method,
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            };
+            
+            if (data) {
+                options.body = JSON.stringify(data);
+            }
+            
+            try {
+                const response = await fetch(url, options);
+                if (!response.ok) {
+                    throw new Error(`Erro HTTP: ${response.status}`);
+                }
+                return await response.json();
+            } catch (error) {
+                console.error('Erro na requisição:', error);
+                throw error;
+            }
+        }
+        
+        // Produtos
+        async function loadProdutos() {
+            const container = document.getElementById('produtos-list');
+            container.innerHTML = '<div class="spinner"></div>';
+            
+            try {
+                const data = await apiRequest('produtos');
+                if (data.status === 'sucesso' && data.produtos.length > 0) {
+                    renderProdutos(data.produtos);
+                } else {
+                    container.innerHTML = '<p>Nenhum produto encontrado</p>';
+                }
+            } catch (error) {
+                container.innerHTML = `<div class="alert alert-error">Erro ao carregar produtos: ${error.message}</div>`;
+            }
+        }
+        
+        function renderProdutos(produtos) {
+            const container = document.getElementById('produtos-list');
+            let html = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Descrição</th>
+                            <th>Quantidade</th>
+                            <th>Quantificação</th>
+                            <th>Valor Unitário</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            produtos.forEach(produto => {
+                html += `
+                    <tr>
+                        <td>${produto.id}</td>
+                        <td>${produto.descricao}</td>
+                        <td>${produto.quantidade}</td>
+                        <td>${produto.quantificacao}</td>
+                        <td>R$ ${produto.valor_unitario.toFixed(2)}</td>
+                        <td>
+                            <button class="btn btn-primary" onclick="editProduto(${produto.id})">Editar</button>
+                            <button class="btn btn-danger" onclick="deleteProduto(${produto.id})">Excluir</button>
+                        </td>
+                    </tr>
+                `;
+            });
+            
+            html += `</tbody></table>`;
+            container.innerHTML = html;
+        }
+        
+        // Receitas
+        async function loadReceitas() {
+            const container = document.getElementById('receitas-list');
+            container.innerHTML = '<div class="spinner"></div>';
+            
+            try {
+                const data = await apiRequest('receitas');
+                if (data.status === 'sucesso' && data.receitas.length > 0) {
+                    renderReceitas(data.receitas);
+                } else {
+                    container.innerHTML = '<p>Nenhuma receita encontrada</p>';
+                }
+            } catch (error) {
+                container.innerHTML = `<div class="alert alert-error">Erro ao carregar receitas: ${error.message}</div>`;
+            }
+        }
+        
+        function renderReceitas(receitas) {
+            const container = document.getElementById('receitas-list');
+            let html = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Nome</th>
+                            <th>Tempo de Preparo</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            receitas.forEach(receita => {
+                html += `
+                    <tr>
+                        <td>${receita.id}</td>
+                        <td>${receita.nome}</td>
+                        <td>${receita.tempo_preparo || '-'}</td>
+                        <td>
+                            <button class="btn btn-primary" onclick="editReceita(${receita.id})">Editar</button>
+                            <button class="btn btn-danger" onclick="deleteReceita(${receita.id})">Excluir</button>
+                            <button class="btn btn-success" onclick="viewReceitaItens(${receita.id})">Itens</button>
+                        </td>
+                    </tr>
+                `;
+            });
+            
+            html += `</tbody></table>`;
+            container.innerHTML = html;
+        }
+        
+        // Orçamentos
+        async function loadOrcamentos() {
+            const container = document.getElementById('orcamentos-list');
+            container.innerHTML = '<div class="spinner"></div>';
+            
+            try {
+                const data = await apiRequest('orcamento');
+                if (data.status === 'sucesso' && data.orcamento.length > 0) {
+                    renderOrcamentos(data.orcamento);
+                } else {
+                    container.innerHTML = '<p>Nenhum orçamento encontrado</p>';
+                }
+            } catch (error) {
+                container.innerHTML = `<div class="alert alert-error">Erro ao carregar orçamentos: ${error.message}</div>`;
+            }
+        }
+        
+        function renderOrcamentos(orcamentos) {
+            const container = document.getElementById('orcamentos-list');
+            let html = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Nome</th>
+                            <th>Percentual</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            orcamentos.forEach(orcamento => {
+                html += `
+                    <tr>
+                        <td>${orcamento.id}</td>
+                        <td>${orcamento.nome}</td>
+                        <td>${orcamento.percentual}%</td>
+                        <td>
+                            <button class="btn btn-primary" onclick="editOrcamento(${orcamento.id})">Editar</button>
+                            <button class="btn btn-danger" onclick="deleteOrcamento(${orcamento.id})">Excluir</button>
+                            <button class="btn btn-success" onclick="viewOrcamentoDetalhes(${orcamento.id})">Detalhes</button>
+                        </td>
+                    </tr>
+                `;
+            });
+            
+            html += `</tbody></table>`;
+            container.innerHTML = html;
+        }
+        
+        // Event Listeners
+        document.addEventListener('DOMContentLoaded', () => {
+            updateCurrentDate();
+            loadDashboardData();
+            
+            // Eventos para produtos
+            document.getElementById('btn-add-produto').addEventListener('click', () => {
+                openProdutoModal();
+            });
+            
+            document.getElementById('btn-save-produto').addEventListener('click', () => {
+                saveProduto();
+            });
+            
+            // Eventos para receitas
+            document.getElementById('btn-add-receita').addEventListener('click', () => {
+                openReceitaModal();
+            });
+            
+            document.getElementById('btn-save-receita').addEventListener('click', () => {
+                saveReceita();
+            });
+            
+            // Fechar modais
+            document.querySelectorAll('.close-modal, .btn[id^="btn-cancel"]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.modal').forEach(modal => {
+                        modal.style.display = 'none';
+                    });
+                });
+            });
+        });
+        
+        // Funções de Produtos
+        function openProdutoModal(produto = null) {
+            const modal = document.getElementById('produto-modal');
+            const title = document.getElementById('modal-produto-title');
+            
+            if (produto) {
+                title.textContent = 'Editar Produto';
+                document.getElementById('produto-id').value = produto.id;
+                document.getElementById('produto-descricao').value = produto.descricao;
+                document.getElementById('produto-quantidade').value = produto.quantidade;
+                document.getElementById('produto-quantificacao').value = produto.quantificacao;
+                document.getElementById('produto-valor').value = produto.valor_unitario;
+                currentProdutoId = produto.id;
+            } else {
+                title.textContent = 'Adicionar Produto';
+                document.getElementById('produto-form').reset();
+                currentProdutoId = null;
+            }
+            
+            modal.style.display = 'flex';
+        }
+        
+        async function editProduto(id) {
+            try {
+                const data = await apiRequest(`produtos/${id}`);
+                if (data.status === 'sucesso') {
+                    openProdutoModal(data.produtos[0]);
+                }
+            } catch (error) {
+                showAlert('produtos', `Erro ao carregar produto: ${error.message}`, 'error');
+            }
+        }
+        
+        async function saveProduto() {
+            const produto = {
+                descricao: document.getElementById('produto-descricao').value,
+                quantidade: parseFloat(document.getElementById('produto-quantidade').value),
+                quantificacao: document.getElementById('produto-quantificacao').value,
+                valor_unitario: parseFloat(document.getElementById('produto-valor').value)
+            };
+            
+            const id = document.getElementById('produto-id').value;
+            
+            try {
+                if (id) {
+                    await apiRequest(`produtos/${id}`, 'PUT', produto);
+                    showAlert('produtos', 'Produto atualizado com sucesso!', 'success');
+                } else {
+                    await apiRequest('produtos', 'POST', produto);
+                    showAlert('produtos', 'Produto criado com sucesso!', 'success');
+                }
+                
+                document.getElementById('produto-modal').style.display = 'none';
+                loadProdutos();
+                loadDashboardData();
+            } catch (error) {
+                showAlert('produtos', `Erro ao salvar produto: ${error.message}`, 'error');
+            }
+        }
+        
+        async function deleteProduto(id) {
+            if (confirm('Tem certeza que deseja excluir este produto?')) {
+                try {
+                    await apiRequest(`produtos/${id}`, 'DELETE');
+                    showAlert('produtos', 'Produto excluído com sucesso!', 'success');
+                    loadProdutos();
+                    loadDashboardData();
+                } catch (error) {
+                    showAlert('produtos', `Erro ao excluir produto: ${error.message}`, 'error');
+                }
+            }
+        }
+        
+        // Funções de Receitas
+        function openReceitaModal(receita = null) {
+            const modal = document.getElementById('receita-modal');
+            const title = document.getElementById('modal-receita-title');
+            
+            if (receita) {
+                title.textContent = 'Editar Receita';
+                document.getElementById('receita-id').value = receita.id;
+                document.getElementById('receita-nome').value = receita.nome;
+                document.getElementById('receita-tempo').value = receita.tempo_preparo || '';
+                document.getElementById('receita-rendimento').value = receita.rendimento || '';
+                document.getElementById('receita-modo').value = receita.modo_preparo || '';
+                currentReceitaId = receita.id;
+            } else {
+                title.textContent = 'Adicionar Receita';
+                document.getElementById('receita-form').reset();
+                currentReceitaId = null;
+            }
+            
+            modal.style.display = 'flex';
+        }
+        
+        async function editReceita(id) {
+            try {
+                const data = await apiRequest(`receitas/${id}`);
+                if (data.status === 'sucesso') {
+                    openReceitaModal(data.receitas[0]);
+                }
+            } catch (error) {
+                showAlert('receitas', `Erro ao carregar receita: ${error.message}`, 'error');
+            }
+        }
+        
+        async function saveReceita() {
+            const receita = {
+                nome: document.getElementById('receita-nome').value,
+                tempo_preparo: document.getElementById('receita-tempo').value,
+                rendimento: document.getElementById('receita-rendimento').value,
+                modo_preparo: document.getElementById('receita-modo').value
+            };
+            
+            const id = document.getElementById('receita-id').value;
+            
+            try {
+                if (id) {
+                    await apiRequest(`receitas`, 'PUT', {...receita, id});
+                    showAlert('receitas', 'Receita atualizada com sucesso!', 'success');
+                } else {
+                    await apiRequest('receitas', 'POST', receita);
+                    showAlert('receitas', 'Receita criada com sucesso!', 'success');
+                }
+                
+                document.getElementById('receita-modal').style.display = 'none';
+                loadReceitas();
+                loadDashboardData();
+            } catch (error) {
+                showAlert('receitas', `Erro ao salvar receita: ${error.message}`, 'error');
+            }
+        }
+        
+        async function deleteReceita(id) {
+            if (confirm('Tem certeza que deseja excluir esta receita?')) {
+                try {
+                    await apiRequest(`receitas/${id}`, 'DELETE');
+                    showAlert('receitas', 'Receita excluída com sucesso!', 'success');
+                    loadReceitas();
+                    loadDashboardData();
+                } catch (error) {
+                    showAlert('receitas', `Erro ao excluir receita: ${error.message}`, 'error');
+                }
+            }
+        }
+        
+        function viewReceitaItens(id) {
+            alert(`Visualizar itens da receita ID: ${id}`);
+            // Implementar lógica para visualizar itens da receita
+        }
+        
+        // Funções de Orçamentos
+        async function editOrcamento(id) {
+            alert(`Editar orçamento ID: ${id}`);
+            // Implementar lógica para editar orçamento
+        }
+        
+        async function deleteOrcamento(id) {
+            if (confirm('Tem certeza que deseja excluir este orçamento?')) {
+                try {
+                    await apiRequest(`orcamento/${id}`, 'DELETE');
+                    showAlert('orcamentos', 'Orçamento excluído com sucesso!', 'success');
+                    loadOrcamentos();
+                    loadDashboardData();
+                } catch (error) {
+                    showAlert('orcamentos', `Erro ao excluir orçamento: ${error.message}`, 'error');
+                }
+            }
+        }
+        
+        function viewOrcamentoDetalhes(id) {
+            alert(`Visualizar detalhes do orçamento ID: ${id}`);
+            // Implementar lógica para visualizar detalhes do orçamento
+        }
+        
+        // Funções auxiliares
+        function showAlert(section, message, type) {
+            const container = document.getElementById(`alert-${section}`);
+            container.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
+            
+            // Remover alerta após 5 segundos
+            setTimeout(() => {
+                container.innerHTML = '';
+            }, 5000);
+        }
+        
+        async function loadDashboardData() {
+            try {
+                // Carregar produtos
+                const produtosData = await apiRequest('produtos');
+                document.getElementById('total-produtos').textContent = produtosData.produtos.length;
+                
+                // Carregar receitas
+                const receitasData = await apiRequest('receitas');
+                document.getElementById('total-receitas').textContent = receitasData.receitas.length;
+                
+                // Carregar orçamentos
+                const orcamentosData = await apiRequest('orcamento');
+                document.getElementById('total-orcamentos').textContent = orcamentosData.orcamento.length;
+                
+                // Últimos produtos
+                const recentProducts = document.getElementById('recent-products');
+                if (produtosData.produtos.length > 0) {
+                    let html = '<ul>';
+                    produtosData.produtos.slice(0, 5).forEach(produto => {
+                        html += `<li>${produto.descricao} - R$ ${produto.valor_unitario.toFixed(2)}</li>`;
+                    });
+                    html += '</ul>';
+                    recentProducts.innerHTML = html;
+                } else {
+                    recentProducts.innerHTML = '<p>Nenhum produto cadastrado</p>';
+                }
+            } catch (error) {
+                console.error('Erro ao carregar dados do dashboard:', error);
+            }
+        }
+        
+        // Expor funções globalmente para uso nos botões
+        window.editProduto = editProduto;
+        window.deleteProduto = deleteProduto;
+        window.editReceita = editReceita;
+        window.deleteReceita = deleteReceita;
+        window.viewReceitaItens = viewReceitaItens;
+        window.editOrcamento = editOrcamento;
+        window.deleteOrcamento = deleteOrcamento;
+        window.viewOrcamentoDetalhes = viewOrcamentoDetalhes;
+    </script>
+</body>
+</html>

@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Orçamentos</title>
+    <style>
+        :root {
+            --primary: #3498db;
+            --secondary: #2ecc71;
+            --danger: #e74c3c;
+            --dark: #34495e;
+            --light: #ecf0f1;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #f5f5f5; color: #333; line-height: 1.6; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 15px; }
+        header { background-color: var(--dark); color: white; padding: 1rem; box-shadow: 0 2px 5px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 100; }
+        .header-content { display: flex; justify-content: space-between; align-items: center; }
+        .logo { font-size: 1.5rem; font-weight: bold; }
+        .nav-tabs { display: flex; background: white; border-bottom: 1px solid #ddd; overflow-x: auto; }
+        .tab-btn { padding: 12px 20px; background: none; border: none; cursor: pointer; font-size: 1rem; white-space: nowrap; border-bottom: 3px solid transparent; }
+        .tab-btn.active { border-bottom-color: var(--primary); color: var(--primary); font-weight: bold; }
+        .tab-content { display: none; padding: 20px; background: white; border-radius: 0 0 5px 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .tab-content.active { display: block; }
+        .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
+        .btn { padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; font-weight: 500; transition: all 0.3s; }
+        .btn-primary { background-color: var(--primary); color: white; }
+        .btn-success { background-color: var(--secondary); color: white; }
+        .btn-danger { background-color: var(--danger); color: white; }
+        .btn:hover { opacity: 0.9; transform: translateY(-2px); }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #eee; }
+        th { background-color: #f8f9fa; font-weight: 600; }
+        tr:hover { background-color: #f8f9fa; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: 500; }
+        input, select, textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem; }
+        .form-row { display: flex; gap: 15px; margin-bottom: 15px; }
+        .form-row .form-group { flex: 1; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; }
+        .modal-content { background: white; border-radius: 8px; width: 90%; max-width: 600px; max-height: 90vh; overflow-y: auto; }
+        .modal-header { padding: 15px 20px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+        .modal-body { padding: 20px; }
+        .modal-footer { padding: 15px 20px; border-top: 1px solid #eee; text-align: right; }
+        .loading { display: flex; justify-content: center; align-items: center; padding: 20px; }
+        .spinner { border: 4px solid rgba(0, 0, 0, 0.1); width: 36px; height: 36px; border-radius: 50%; border-left-color: var(--primary); animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .alert { padding: 10px 15px; border-radius: 4px; margin-bottom: 15px; }
+        .alert-success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .alert-error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        @media (max-width: 768px) {
+            .form-row { flex-direction: column; gap: 0; }
+            th, td { padding: 8px 5px; font-size: 0.9rem; }
+            .btn { padding: 8px 12px; font-size: 0.9rem; }
+        }
+    </style>
+</head>
+<body>
+<header>
+    <div class="header-content">
+        <div class="logo">Sistema de Orçamentos</div>
+        <div id="currentDate"></div>
+    </div>
+</header>
+
+<div class="nav-tabs">
+    <button class="tab-btn active" data-tab="dashboard">Dashboard</button>
+    <button class="tab-btn" data-tab="produtos">Produtos</button>
+    <button class="tab-btn" data-tab="receitas">Receitas</button>
+    <button class="tab-btn" data-tab="orcamentos">Orçamentos</button>
+</div>
+
+<div class="container">
+    <!-- Dashboard -->
+    <div id="dashboard" class="tab-content active">
+        <h2>Visão Geral</h2>
+        <div class="stats-container">
+            <div class="stat-card"><h3>Total de Produtos</h3><p id="total-produtos">0</p></div>
+            <div class="stat-card"><h3>Total de Receitas</h3><p id="total-receitas">0</p></div>
+            <div class="stat-card"><h3>Total de Orçamentos</h3><p id="total-orcamentos">0</p></div>
+        </div>
+        <div class="recent-section">
+            <h3>Últimos Produtos</h3>
+            <div id="recent-products" class="loading"><div class="spinner"></div></div>
+        </div>
+    </div>
+
+    <!-- Produtos -->
+    <div id="produtos" class="tab-content">
+        <div class="page-header">
+            <h2>Gestão de Produtos</h2>
+            <div>
+                <button class="btn btn-success" onclick="loadProdutos()">Atualizar</button>
+                <button class="btn btn-primary" id="btn-add-produto">Adicionar Produto</button>
+            </div>
+        </div>
+        <div id="alert-produtos"></div>
+        <div id="produtos-list" class="loading"><div class="spinner"></div></div>
+    </div>
+
+    <!-- Receitas -->
+    <div id="receitas" class="tab-content">
+        <div class="page-header">
+            <h2>Gestão de Receitas</h2>
+            <div>
+                <button class="btn btn-success" onclick="loadReceitas()">Atualizar</button>
+                <button class="btn btn-primary" id="btn-add-receita">Adicionar Receita</button>
+            </div>
+        </div>
+        <div id="alert-receitas"></div>
+        <div id="receitas-list" class="loading"><div class="spinner"></div></div>
+    </div>
+
+    <!-- Orçamentos -->
+    <div id="orcamentos" class="tab-content">
+        <div class="page-header">
+            <h2>Gestão de Orçamentos</h2>
+            <div>
+                <button class="btn btn-success" onclick="loadOrcamentos()">Atualizar</button>
+                <button class="btn btn-primary" id="btn-add-orcamento">Criar Orçamento</button>
+            </div>
+        </div>
+        <div id="alert-orcamentos"></div>
+        <div id="orcamentos-list" class="loading"><div class="spinner"></div></div>
+    </div>
+</div>
+
+<!-- Modal Produto -->
+<div id="produto-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="modal-produto-title">Adicionar Produto</h3>
+            <button class="close-modal">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="produto-form">
+                <input type="hidden" id="produto-id">
+                <div class="form-group">
+                    <label for="produto-descricao">Descrição</label>
+                    <input type="text" id="produto-descricao" required>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="produto-quantidade">Quantidade</label>
+                        <input type="number" step="0.001" id="produto-quantidade" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="produto-quantificacao">Quantificação</label>
+                        <input type="text" id="produto-quantificacao" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="produto-valor">Valor Unitário (R$)</label>
+                    <input type="number" step="0.01" id="produto-valor" required>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button class="btn" id="btn-cancel-produto">Cancelar</button>
+            <button class="btn btn-primary" id="btn-save-produto">Salvar</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Itens da Receita -->
+<div id="receita-itens-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Itens da Receita</h3>
+            <button class="close-modal">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div id="alert-receita-itens"></div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="item-produto">Produto</label>
+                    <select id="item-produto"></select>
+                </div>
+                <div class="form-group">
+                    <label for="item-quantidade">Quantidade Utilizada</label>
+                    <input type="number" step="0.001" id="item-quantidade" placeholder="Ex: 1.5">
+                </div>
+                <div class="form-group">
+                    <label>&nbsp;</label>
+                    <button class="btn btn-primary" onclick="addReceitaItem()">Adicionar</button>
+                </div>
+            </div>
+            <div id="receita-itens-list"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Receita -->
+<div id="receita-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="modal-receita-title">Adicionar Receita</h3>
+            <button class="close-modal">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="receita-form">
+                <input type="hidden" id="receita-id">
+                <div class="form-group">
+                    <label for="receita-nome">Nome</label>
+                    <input type="text" id="receita-nome" required>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="receita-tempo">Tempo de Preparo</label>
+                        <input type="text" id="receita-tempo">
+                    </div>
+                    <div class="form-group">
+                        <label for="receita-rendimento">Rendimento</label>
+                        <input type="text" id="receita-rendimento">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="receita-modo">Modo de Preparo</label>
+                    <textarea id="receita-modo" rows="4"></textarea>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button class="btn" id="btn-cancel-receita">Cancelar</button>
+            <button class="btn btn-primary" id="btn-save-receita">Salvar</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Orçamento -->
+<div id="orcamento-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="modal-orcamento-title">Adicionar Orçamento</h3>
+            <button class="close-modal">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="orcamento-form">
+                <input type="hidden" id="orcamento-id">
+                <div class="form-group">
+                    <label for="orcamento-nome">Nome</label>
+                    <input type="text" id="orcamento-nome" required>
+                </div>
+                <div class="form-group">
+                    <label for="orcamento-percentual">Lucro percentual (%)</label>
+                    <input type="number" step="0.01" id="orcamento-percentual">
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button class="btn" id="btn-cancel-orcamento">Cancelar</button>
+            <button class="btn btn-primary" id="btn-save-orcamento">Salvar</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal itens orcamento -->
+<div id="orcamento-itens-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Receitas do Orçamento</h3>
+            <button class="close-modal">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="orcamento-receita">Receita</label>
+                    <select id="orcamento-receita"></select>
+                </div>
+                <div class="form-group">
+                    <label for="orcamento-receita-qtd">Quantidade</label>
+                    <input type="number" step="0.01" id="orcamento-receita-qtd" placeholder="Ex: 2">
+                </div>
+                <div class="form-group">
+                    <label>&nbsp;</label>
+                    <button class="btn btn-primary" onclick="addReceitaAoOrcamento()">Adicionar</button>
+                </div>
+            </div>
+            <div id="orcamento-receitas-list"></div>
+        </div>
+    </div>
+</div> 
+
+<!-- Modal Orçamento total -->
+<div id="orcamento-total-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Total do Orçamento</h3>
+            <button class="close-modal">&times;</button>
+        </div>
+        <div style="margin-bottom:10px; display:flex; align-items:center; gap:10px;">
+            <label for="toggle-custos" style="display:flex; align-items:center; gap:5px; cursor:pointer;">
+                <span>Confirmação</span>
+                <input type="checkbox" id="toggle-custos">
+            </label>
+        </div>
+    <div id="orcamento-total-list" style="margin-top:15px;"></div>
+</div>
+</div>
+<script>
+const API_BASE_URL = window.location.origin + '/';
+let produtosCache = [];
+let receitasCache = [];
+let orcamentosCache = [];
+
+const tabBtns = document.querySelectorAll('.tab-btn');
+const tabContents = document.querySelectorAll('.tab-content');
+const currentDateEl = document.getElementById('currentDate');
+
+function updateCurrentDate() {
+    const now = new Date();
+    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+    currentDateEl.textContent = now.toLocaleDateString('pt-BR', options);
+}
+
+tabBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+        tabBtns.forEach(b => b.classList.remove('active'));
+        tabContents.forEach(c => c.classList.remove('active'));
+        btn.classList.add('active');
+        const tabId = btn.getAttribute('data-tab');
+        document.getElementById(tabId).classList.add('active');
+        if (tabId === 'produtos') loadProdutos();
+        if (tabId === 'receitas') loadReceitas();
+        if (tabId === 'orcamentos') loadOrcamentos();
+    });
+});
+
+async function apiRequest(endpoint, method = 'GET', data = null) {
+    const url = API_BASE_URL + endpoint;
+    const options = { method, headers: { 'Content-Type': 'application/json' } };
+    if (data) options.body = JSON.stringify(data);
+    const response = await fetch(url, options);
+    const result = await response.json();
+    if (!response.ok || result.status === 'erro') {
+        throw new Error(result.mensagem || `Erro HTTP ${response.status}`);
+    }
+    return result;
+}
+
+/* Produtos */
+async function loadProdutos() {
+    const container = document.getElementById('produtos-list');
+    container.innerHTML = '<div class="spinner"></div>';
+    try {
+        const data = await apiRequest('produtos');
+        produtosCache = data.produtos;
+        if (produtosCache.length > 0) renderProdutos(produtosCache);
+        else container.innerHTML = '<p>Nenhum produto encontrado</p>';
+    } catch (e) {
+        container.innerHTML = `<div class="alert alert-error">${e.message}</div>`;
+    }
+}
+
+function renderProdutos(produtos) {
+    const container = document.getElementById('produtos-list');
+    let html = `<table><thead><tr>
+        <th>ID</th><th>Descrição</th><th>Quantidade</th><th>Quantificação</th><th>Valor Unitário</th><th>Ações</th>
+    </tr></thead><tbody>`;
+    produtos.forEach(produto => {
+        html += `<tr>
+            <td>${produto.id}</td>
+            <td>${produto.descricao}</td>
+            <td>${produto.quantidade}</td>
+            <td>${produto.quantificacao}</td>
+            <td>R$ ${parseFloat(produto.valor_unitario).toFixed(2)}</td>
+            <td>
+                <button class="btn btn-primary" onclick="openProdutoModal(${produto.id})">Editar</button>
+                <button class="btn btn-danger" onclick="deleteProduto(${produto.id})">Excluir</button>
+            </td>
+        </tr>`;
+    });
+    html += '</tbody></table>';
+    container.innerHTML = html;
+}
+
+function openProdutoModal(id = null) {
+    const modal = document.getElementById('produto-modal');
+    document.getElementById('produto-form').reset();
+    if (id) {
+        const p = produtosCache.find(prod => prod.id === id);
+        if (!p) return;
+        document.getElementById('produto-id').value = p.id;
+        document.getElementById('produto-descricao').value = p.descricao;
+        document.getElementById('produto-quantidade').value = p.quantidade;
+        document.getElementById('produto-quantificacao').value = p.quantificacao;
+        document.getElementById('produto-valor').value = p.valor_unitario;
+        document.getElementById('modal-produto-title').textContent = 'Editar Produto';
+    } else {
+        document.getElementById('modal-produto-title').textContent = 'Adicionar Produto';
+    }
+    modal.style.display = 'flex';
+}
+
+async function saveProduto() {
+    const id = document.getElementById('produto-id').value;
+    const produto = {
+        descricao: document.getElementById('produto-descricao').value,
+        quantidade: parseFloat(document.getElementById('produto-quantidade').value),
+        quantificacao: document.getElementById('produto-quantificacao').value,
+        valor_unitario: parseFloat(document.getElementById('produto-valor').value)
+    };
+    try {
+        if (id) await apiRequest(`produtos/${id}`, 'PUT', produto);
+        else await apiRequest('produtos', 'POST', produto);
+        document.getElementById('produto-modal').style.display = 'none';
+        loadProdutos(); loadDashboardData();
+    } catch (e) { alert(e.message); }
+}
+
+async function deleteProduto(id) {
+    if (confirm('Excluir produto?')) {
+        try {
+            await apiRequest(`produtos/${id}`, 'DELETE');
+            loadProdutos(); loadDashboardData();
+        } catch (e) { alert(e.message); }
+    }
+}
+
+/* Receitas */
+async function loadReceitas() {
+    const container = document.getElementById('receitas-list');
+    container.innerHTML = '<div class="spinner"></div>';
+    try {
+        const data = await apiRequest('receitas');
+        receitasCache = data.receitas;
+        if (receitasCache.length > 0) renderReceitas(receitasCache);
+        else container.innerHTML = '<p>Nenhuma receita encontrada</p>';
+    } catch (e) {
+        container.innerHTML = `<div class="alert alert-error">${e.message}</div>`;
+    }
+}
+
+function renderReceitas(receitas) {
+    const container = document.getElementById('receitas-list');
+    let html = `<table><thead><tr>
+        <th>ID</th><th>Nome</th><th>Tempo</th><th>Ações</th>
+    </tr></thead><tbody>`;
+    receitas.forEach(r => {
+        html += `<tr>
+            <td>${r.id}</td>
+            <td>${r.nome}</td>
+            <td>${r.tempo_preparo || '-'}</td>
+            <td>
+                <button class="btn btn-primary" onclick="openReceitaModal(${r.id})">Editar</button>
+                <button class="btn btn-danger" onclick="deleteReceita(${r.id})">Excluir</button>
+                <button class="btn btn-success" onclick="viewReceitaItens(${r.id})">Itens</button>
+            </td>
+        </tr>`;
+    });
+    html += '</tbody></table>';
+    container.innerHTML = html;
+}
+
+function openReceitaModal(id = null) {
+    const modal = document.getElementById('receita-modal');
+    document.getElementById('receita-form').reset();
+    if (id) {
+        const r = receitasCache.find(rec => rec.id === id);
+        if (!r) return;
+        document.getElementById('receita-id').value = r.id;
+        document.getElementById('receita-nome').value = r.nome;
+        document.getElementById('receita-tempo').value = r.tempo_preparo || '';
+        document.getElementById('receita-rendimento').value = r.rendimento || '';
+        document.getElementById('receita-modo').value = r.modo_preparo || '';
+        document.getElementById('modal-receita-title').textContent = 'Editar Receita';
+    } else {
+        document.getElementById('modal-receita-title').textContent = 'Adicionar Receita';
+    }
+    modal.style.display = 'flex';
+}
+
+async function saveReceita() {
+    const id = document.getElementById('receita-id').value;
+    const receita = {
+        nome: document.getElementById('receita-nome').value,
+        tempo_preparo: document.getElementById('receita-tempo').value,
+        rendimento: document.getElementById('receita-rendimento').value,
+        modo_preparo: document.getElementById('receita-modo').value
+    };
+    try {
+        if (id) await apiRequest('receitas', 'PUT', { ...receita, id });
+        else await apiRequest('receitas', 'POST', receita);
+        document.getElementById('receita-modal').style.display = 'none';
+        loadReceitas(); loadDashboardData();
+    } catch (e) { alert(e.message); }
+}
+
+async function deleteReceita(id) {
+    if (confirm('Excluir receita?')) {
+        try {
+            await apiRequest(`receitas/${id}`, 'DELETE');
+            loadReceitas(); loadDashboardData();
+        } catch (e) { alert(e.message); }
+    }
+}
+
+let receitaItensReceitaId = null;
+let receitaItensCache = [];
+
+async function viewReceitaItens(receitaId) {
+    receitaItensReceitaId = receitaId;
+
+    // Carrega lista de produtos para o select
+    await loadProdutos();
+    const select = document.getElementById('item-produto');
+    select.innerHTML = produtosCache
+        .map(p => `<option value="${p.id}">${p.descricao } - ${p.quantificacao}</option>`)
+        .join('');
+
+    await loadReceitaItens(receitaId);
+    document.getElementById('receita-itens-modal').style.display = 'flex';
+}
+
+async function loadReceitaItens(receitaId) {
+    const container = document.getElementById('receita-itens-list');
+    container.innerHTML = '<div class="spinner"></div>';
+    try {
+        const data = await apiRequest(`receitas/${receitaId}/itens`);
+        receitaItensCache = data.itens;
+
+        if (receitaItensCache.length > 0) {
+            let html = `<table><thead><tr>
+                <th>Produto</th><th>Quantidade</th><th>Quantificação</th><th>Ações</th>
+            </tr></thead><tbody>`;
+            receitaItensCache.forEach(item => {
+                const produtoNome = item.descricao;
+                const quantificacao = item ? item.quantificacao : '';
+                html += `<tr>
+                    <td>${produtoNome}</td>
+                    <td>${item.quantidade_utilizada}</td>
+                    <td>${quantificacao}</td>
+                    <td><button class="btn btn-danger" onclick="deleteReceitaItem(${item.id})">Excluir</button></td>
+                </tr>`;
+            });
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        } else {
+            container.innerHTML = '<p>Nenhum item adicionado</p>';
+        }
+    } catch (e) {
+        container.innerHTML = `<div class="alert alert-error">${e.message}</div>`;
+    }
+}
+
+async function addReceitaItem() {
+    const produtoId = parseInt(document.getElementById('item-produto').value);
+    const quantidade = parseFloat(document.getElementById('item-quantidade').value);
+
+    if (!produtoId || isNaN(quantidade) || quantidade <= 0) {
+        alert('Selecione um produto e informe uma quantidade válida.');
+        return;
+    }
+
+    try {
+        await apiRequest(`receitas/${receitaItensReceitaId}/itens`, 'POST', {
+            produto_id: produtoId,
+            quantidade_utilizada: quantidade
+        });
+        document.getElementById('item-quantidade').value = '';
+        await loadReceitaItens(receitaItensReceitaId);
+    } catch (e) {
+        alert(e.message);
+    }
+}
+
+async function deleteReceitaItem(itemId) {
+    if (confirm('Excluir este item?')) {
+        try {
+            await apiRequest(`receitas/itens/${itemId}`, 'DELETE');
+            await loadReceitaItens(receitaItensReceitaId);
+        } catch (e) {
+            alert(e.message);
+        }
+    }
+}
+
+/* Orçamentos */
+async function loadOrcamentos() {
+    const container = document.getElementById('orcamentos-list');
+    container.innerHTML = '<div class="spinner"></div>';
+    try {
+        const data = await apiRequest('orcamento');
+        orcamentosCache = data.orcamento;
+        if (orcamentosCache.length > 0) renderOrcamentos(orcamentosCache);
+        else container.innerHTML = '<p>Nenhum orçamento encontrado</p>';
+    } catch (e) {
+        container.innerHTML = `<div class="alert alert-error">${e.message}</div>`;
+    }
+}
+
+function renderOrcamentos(orcamentos) {
+    const container = document.getElementById('orcamentos-list');
+    let html = `<table><thead><tr>
+        <th>ID</th><th>Nome</th><th>Ações</th>
+    </tr></thead><tbody>`;
+    orcamentos.forEach(o => {
+        html += `<tr>
+            <td>${o.id}</td>
+            <td>${o.nome}</td>
+            <td>
+                <button class="btn btn-primary" onclick="openOrcamentoModal(${o.id})">Editar</button>
+                <button class="btn btn-danger" onclick="deleteOrcamento(${o.id})">Excluir</button>
+                <button class="btn btn-success" onclick="viewOrcamentoDetalhes(${o.id})">Receitas</button>
+                <button class="btn btn-dark" onclick="viewOrcamentoTotal(${o.id})">Total</button>
+            </td>
+        </tr>`;
+    });
+    html += '</tbody></table>';
+    container.innerHTML = html;
+}
+
+function openOrcamentoModal(id = null) {
+    const modal = document.getElementById('orcamento-modal');
+    document.getElementById('orcamento-form').reset();
+    if (id) {
+        const o = orcamentosCache.find(orc => orc.id === id);
+        if (!o) return;
+        document.getElementById('orcamento-id').value = o.id;
+        document.getElementById('orcamento-nome').value = o.nome;
+        document.getElementById('orcamento-percentual').value = o.percentual || 0;
+        document.getElementById('modal-orcamento-title').textContent = 'Editar Orçamento';
+    } else {
+        document.getElementById('modal-orcamento-title').textContent = 'Adicionar Orçamento';
+    }
+    modal.style.display = 'flex';
+}
+
+async function saveOrcamento() {
+    const id = document.getElementById('orcamento-id').value;
+    const orcamento = {
+        nome: document.getElementById('orcamento-nome').value,
+        percentual: parseFloat(document.getElementById('orcamento-percentual').value) || 0
+    };
+    try {
+        if (id) await apiRequest('orcamento', 'PUT', { ...orcamento, id });
+        else await apiRequest('orcamento', 'POST', orcamento);
+        document.getElementById('orcamento-modal').style.display = 'none';
+        loadOrcamentos(); loadDashboardData();
+    } catch (e) { alert(e.message); }
+}
+
+async function deleteOrcamento(id) {
+    if (confirm('Excluir orçamento?')) {
+        try {
+            await apiRequest(`orcamento/${id}`, 'DELETE');
+            loadOrcamentos(); loadDashboardData();
+        } catch (e) { alert(e.message); }
+    }
+}
+
+let orcamentoReceitasCache = [];
+let orcamentoAtualId = null;
+
+async function viewOrcamentoDetalhes(id) {
+    orcamentoAtualId = id;
+
+    // Carregar lista de receitas para o select
+    await loadReceitas();
+    const select = document.getElementById('orcamento-receita');
+    select.innerHTML = receitasCache
+        .map(r => `<option value="${r.id}">${r.nome} - ${r.rendimento}</option>`)
+        .join('');
+
+    await loadReceitasDoOrcamento(id);
+    document.getElementById('orcamento-itens-modal').style.display = 'flex';
+}
+
+async function loadReceitasDoOrcamento(orcamentoId) {
+    const container = document.getElementById('orcamento-receitas-list');
+    container.innerHTML = '<div class="spinner"></div>';
+    try {
+        const data = await apiRequest(`orcamento/${orcamentoId}/receitas`);
+        orcamentoReceitasCache = data.itens;
+        console.log("orcamentoId", orcamentoId);
+        console.log("data", data);
+
+        if (orcamentoReceitasCache.length > 0) {
+            let html = `<table><thead><tr>
+                <th>Receita</th><th>Quantidade</th><th>Ações</th>
+            </tr></thead><tbody>`;
+            orcamentoReceitasCache.forEach(item => {
+                const receita = receitasCache.find(r => r.id === item.receita_id);
+                const receitaNome = item.nome;
+                html += `<tr>
+                    <td>${receitaNome}</td>
+                    <td>${item.quantidade}</td>
+                    <td><button class="btn btn-danger" onclick="deleteReceitaDoOrcamento(${item.id})">Excluir</button></td>
+                </tr>`;
+            });
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        } else {
+            container.innerHTML = '<p>Nenhuma receita adicionada ao orçamento</p>';
+        }
+    } catch (e) {
+        container.innerHTML = `<div class="alert alert-error">${e.message}</div>`;
+    }
+}
+
+async function addReceitaAoOrcamento() {
+    const receitaId = parseInt(document.getElementById('orcamento-receita').value);
+    const quantidade = parseFloat(document.getElementById('orcamento-receita-qtd').value);
+
+    if (!receitaId || isNaN(quantidade) || quantidade <= 0) {
+        alert('Selecione uma receita e informe uma quantidade válida.');
+        return;
+    }
+
+    try {
+        await apiRequest(`orcamento/${orcamentoAtualId}/itens`, 'POST', {
+            orcamento_id: orcamentoAtualId,
+            receita_id: receitaId,
+            quantidade: quantidade
+        });
+        document.getElementById('orcamento-receita-qtd').value = '';
+        await loadReceitasDoOrcamento(orcamentoAtualId);
+    } catch (e) {
+        alert(e.message);
+    }
+}
+
+async function deleteReceitaDoOrcamento(itemId) {
+    if (confirm('Excluir esta receita do orçamento?')) {
+        try {
+            await apiRequest(`orcamento/itens/${itemId}`, 'DELETE');
+            await loadReceitasDoOrcamento(orcamentoAtualId);
+        } catch (e) {
+            alert(e.message);
+        }
+    }
+}
+
+async function viewOrcamentoTotal(orcamentoId) {
+    const container = document.getElementById('orcamento-total-list');
+    container.innerHTML = '<div class="spinner"></div>';
+    document.getElementById('orcamento-total-modal').style.display = 'flex';
+
+    try {
+        const data = await apiRequest(`orcamento/${orcamentoId}/total`);
+        console.log(data)
+        renderOrcamentoTotais(data.data);
+    } catch (e) {
+        container.innerHTML = `<div class="alert alert-error">${e.message}</div>`;
+    }
+}
+
+function renderOrcamentoTotais(data) {
+    const container = document.getElementById('orcamento-total-list');
+    const mostrarCustos = document.getElementById('toggle-custos').checked;
+
+    let html = `<table><thead><tr>
+        <th>Tipo</th><th>Quantidade</th>${mostrarCustos ? '<th>Custo</th>' : ''}<th>Valor</th></tr></thead><tbody>`;
+
+    data.itens.forEach(item => {
+        html += `<tr>
+            <td>${item.tipo}</td>
+            <td>${item.quantidade}</td>
+            ${mostrarCustos ? `<td>R$ ${item.custo.toFixed(2)}</td>` : ''}
+            <td>R$ ${item.adicional.toFixed(2)}</td>
+        </tr>`;
+    });
+
+    html += '</tbody></table>';
+
+    // Totalizadores
+    html += `<div style="margin-top:10px;">
+        <strong>Total:</strong> R$ ${data.totais.total_valor_final.toFixed(2)}<br>
+        ${mostrarCustos ? `<strong>Custo total:</strong> R$ ${data.totais.total_custo.toFixed(2)}<br>
+        <strong>Lucro:</strong> R$ ${(data.totais.total_valor_final - data.totais.total_custo).toFixed(2)}` : ''}
+    </div>`;
+
+    container.innerHTML = html;
+}
+
+// Atualiza a exibição quando o checkbox mudar
+document.getElementById('toggle-custos').addEventListener('change', () => {
+    const dataCache = document.getElementById('orcamento-total-list').dataset.cache;
+    if (dataCache) {
+        renderOrcamentoTotais(JSON.parse(dataCache));
+    }
+});
+
+async function viewOrcamentoTotal(orcamentoId) {
+    const container = document.getElementById('orcamento-total-list');
+    container.innerHTML = '<div class="spinner"></div>';
+    document.getElementById('orcamento-total-modal').style.display = 'flex';
+
+    try {
+        const data = await apiRequest(`orcamento/${orcamentoId}/total`);
+        container.dataset.cache = JSON.stringify(data.data);
+        renderOrcamentoTotais(data.data);
+    } catch (e) {
+        container.innerHTML = `<div class="alert alert-error">${e.message}</div>`;
+    }
+}
+
+/* Dashboard */
+async function loadDashboardData() {
+    try {
+        const produtosData = await apiRequest('produtos');
+        document.getElementById('total-produtos').textContent = produtosData.produtos.length;
+        const receitasData = await apiRequest('receitas');
+        document.getElementById('total-receitas').textContent = receitasData.receitas.length;
+        const orcamentosData = await apiRequest('orcamento');
+        document.getElementById('total-orcamentos').textContent = orcamentosData.orcamento.length;
+        const recentProducts = document.getElementById('recent-products');
+        if (produtosData.produtos.length > 0) {
+            let html = '<ul>';
+            produtosData.produtos.slice(0, 5).forEach(produto => {
+                html += `<li>${produto.descricao} - R$ ${parseFloat(produto.valor_unitario).toFixed(2)}</li>`;
+            });
+            html += '</ul>';
+            recentProducts.innerHTML = html;
+        } else {
+            recentProducts.innerHTML = '<p>Nenhum produto cadastrado</p>';
+        }
+    } catch (e) {
+        console.error(e);
+    }
+}
+
+/* Eventos */
+document.addEventListener('DOMContentLoaded', () => {
+    updateCurrentDate();
+    loadDashboardData();
+    document.getElementById('btn-add-produto').addEventListener('click', () => openProdutoModal());
+    document.getElementById('btn-save-produto').addEventListener('click', saveProduto);
+    document.getElementById('btn-add-receita').addEventListener('click', () => openReceitaModal());
+    document.getElementById('btn-save-receita').addEventListener('click', saveReceita);
+    document.getElementById('btn-add-orcamento').addEventListener('click', () => openOrcamentoModal());
+    document.getElementById('btn-save-orcamento').addEventListener('click', saveOrcamento);
+    document.querySelectorAll('.close-modal, .btn[id^="btn-cancel"]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.modal').forEach(m => m.style.display = 'none');
+        });
+    });
+});
+
+/* Expor globalmente */
+window.openProdutoModal = openProdutoModal;
+window.deleteProduto = deleteProduto;
+window.openReceitaModal = openReceitaModal;
+window.deleteReceita = deleteReceita;
+window.viewReceitaItens = viewReceitaItens;
+window.openOrcamentoModal = openOrcamentoModal;
+window.deleteOrcamento = deleteOrcamento;
+window.viewOrcamentoDetalhes = viewOrcamentoDetalhes;
+</script>
