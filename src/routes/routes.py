@@ -382,3 +382,83 @@ def setup_routes(app):
                 "status": "erro",
                 "mensagem": str(e)
             }), 500
+
+    # region Endpoints de Estoque
+    @app.route('/estoque/movimentacoes', methods=['GET'])
+    def listar_movimentacoes_estoque():
+        try:
+            produto_id = request.args.get('produto_id', type=int)
+            movimentacoes = pg.obtem_movimentacoes_estoque(produto_id if produto_id else None)
+
+            return jsonify({
+                "status": "sucesso",
+                "movimentacoes": movimentacoes
+            })
+        except Exception as e:
+            return jsonify({
+                "status": "erro",
+                "mensagem": str(e)
+            }), 500
+
+    @app.route('/estoque/saldo', methods=['GET'])
+    def listar_saldo_estoque():
+        try:
+            produto_id = request.args.get('produto_id', type=int)
+            saldos = pg.obtem_saldo_estoque(produto_id if produto_id else None)
+
+            return jsonify({
+                "status": "sucesso",
+                "saldos": saldos
+            })
+        except Exception as e:
+            return jsonify({
+                "status": "erro",
+                "mensagem": str(e)
+            }), 500
+
+    @app.route('/estoque/movimentacoes', methods=['POST'])
+    def inserir_movimentacao_estoque():
+        try:
+            dados = request.get_json()
+            campos_obrigatorios = ['produto_id', 'tipo_movimentacao', 'quantidade']
+            
+            for campo in campos_obrigatorios:
+                if campo not in dados:
+                    raise ValueError(f"Campo obrigatório ausente: {campo}")
+
+            # Validações adicionais
+            if dados['tipo_movimentacao'] not in ['ENTRADA', 'SAIDA']:
+                raise ValueError("tipo_movimentacao deve ser 'ENTRADA' ou 'SAIDA'")
+            
+            if dados['tipo_movimentacao'] == 'ENTRADA' and 'tipo_entrada' in dados:
+                if dados['tipo_entrada'] not in ['MANUAL', 'COMPRA']:
+                    raise ValueError("tipo_entrada deve ser 'MANUAL' ou 'COMPRA'")
+
+            id = pg.inserir_movimentacao_estoque(dados)
+
+            return jsonify({
+                "status": "sucesso",
+                "id": id,
+                "mensagem": "Movimentação de estoque registrada com sucesso!"
+            })
+        except Exception as e:
+            return jsonify({
+                "status": "erro",
+                "mensagem": str(e)
+            }), 500
+
+    @app.route('/estoque/movimentacoes/<int:id>', methods=['DELETE'])
+    def excluir_movimentacao_estoque(id):
+        try:
+            pg.excluir_movimentacao_estoque(id)
+            return jsonify({
+                "status": "sucesso",
+                "mensagem": "Movimentação de estoque excluída com sucesso!"
+            })
+        except Exception as e:
+            return jsonify({
+                "status": "erro",
+                "mensagem": str(e)
+            }), 500
+
+    #endregion

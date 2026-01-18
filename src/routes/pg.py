@@ -778,7 +778,187 @@ def obtem_itens_orcamentos_receita(orcamento_id):
             })
     return itens
 
+# region Funções de Estoque
+def obtem_movimentacoes_estoque(produto_id=None):
+    """Obtém todas as movimentações de estoque ou de um produto específico"""
+    if produto_id:
+        sql = '''
+        SELECT me.id, me.produto_id, p.descricao, me.tipo_movimentacao, 
+               me.quantidade, me.tipo_entrada, me.observacao, me.data_movimentacao
+        FROM public.movimentacoes_estoque me
+        INNER JOIN public.produtos p ON p.id = me.produto_id AND p.deleted_at IS NULL
+        WHERE me.deleted_at IS NULL AND me.produto_id = %s
+        ORDER BY me.data_movimentacao DESC
+        '''
+        params = (produto_id,)
+    else:
+        sql = '''
+        SELECT me.id, me.produto_id, p.descricao, me.tipo_movimentacao, 
+               me.quantidade, me.tipo_entrada, me.observacao, me.data_movimentacao
+        FROM public.movimentacoes_estoque me
+        INNER JOIN public.produtos p ON p.id = me.produto_id AND p.deleted_at IS NULL
+        WHERE me.deleted_at IS NULL
+        ORDER BY me.data_movimentacao DESC
+        '''
+        params = None
+    
+    resultados = open_query(sql, params)
+    movimentacoes = []
+    
+    for resultado in resultados:
+        movimentacoes.append({
+            'id': resultado[0],
+            'produto_id': resultado[1],
+            'produto_descricao': resultado[2],
+            'tipo_movimentacao': resultado[3],
+            'quantidade': float(resultado[4]) if resultado[4] else 0,
+            'tipo_entrada': resultado[5],
+            'observacao': resultado[6],
+            'data_movimentacao': resultado[7].strftime('%Y-%m-%d %H:%M:%S') if resultado[7] else ''
+        })
+    
+    return movimentacoes
+
+def obtem_saldo_estoque(produto_id=None):
+    """Obtém o saldo atual de todos os produtos ou de um produto específico"""
+    if produto_id:
+        sql = '''
+        SELECT p.id, p.descricao, p.quantidade, p.quantificacao, p.valor_unitario,
+               COALESCE(SUM(CASE WHEN me.tipo_movimentacao = 'ENTRADA' THEN me.quantidade 
+                               ELSE -me.quantidade END), 0) as saldo_movimentacoes,
+               (p.quantidade + COALESCE(SUM(CASE WHEN me.tipo_movimentacao = 'ENTRADA' THEN me.quantidade 
+                                              ELSE -me.quantidade END), 0)) as saldo_total
+        FROM public.produtos p
+        LEFT JOIN public.movimentacoes_estoque me ON me.produto_id = p.id AND me.deleted_at IS NULL
+        WHERE p.deleted_at IS NULL AND p.id = %s
+        GROUP BY p.id, p.descricao, p.quantidade, p.quantificacao, p.valor_unitario
+        ORDER BY p.descricao
+        '''
+        params = (produto_id,)
+    else:
+        sql = '''
+        SELECT p.id, p.descricao, p.quantidade, p.quantificacao, p.valor_unitario,
+               COALESCE(SUM(CASE WHEN me.tipo_movimentacao = 'ENTRADA' THEN me.quantidade 
+                               ELSE -me.quantidade END), 0) as saldo_movimentacoes,
+               (p.quantidade + COALESCE(SUM(CASE WHEN me.tipo_movimentacao = 'ENTRADA' THEN me.quantidade 
+                                              ELSE -me.quantidade END), 0)) as saldo_total
+        FROM public.produtos p
+        LEFT JOIN public.movimentacoes_estoque me ON me.produto_id = p.id AND me.deleted_at IS NULL
+        WHERE p.deleted_at IS NULL
+        GROUP BY p.id, p.descricao, p.quantidade, p.quantificacao, p.valor_unitario
+        ORDER BY p.descricao
+        '''
+        params = None
+    
+    resultados = open_query(sql, params)
+    saldos = []
+    
+    for resultado in resultados:
+        saldos.append({
+            'id': resultado[0],
+            'descricao': resultado[1],
+            'quantidade_inicial': float(resultado[2]) if resultado[2] else 0,
+            'quantificacao': resultado[3],
+            'valor_unitario': float(resultado[4]) if resultado[4] else 0,
+            'saldo_movimentacoes': float(resultado[5]) if resultado[5] else 0,
+            'saldo_total': float(resultado[6]) if resultado[6] else 0
+        })
+    
+    return saldos
+
+def inserir_movimentacao_estoque(dados):
+    """Insere uma nova movimentação de estoque e atualiza o saldo do produto"""
+    sql = '''
+    INSERT INTO public.movimentacoes_estoque
+        (produto_id, tipo_movimentacao, quantidade, tipo_entrada, observacao)
+    VALUES
+        (%s, %s, %s, %s, %s)
+    RETURNING id;
+    '''
+    params = (
+        dados.get('produto_id'),
+        dados.get('tipo_movimentacao'),
+        dados.get('quantidade'),
+        dados.get('tipo_entrada'),
+        dados.get('observacao')
+    )
+    
+    result = execute_query(sql, params)['data']
+    if not result:
+        raise Exception("Erro ao inserir movimentação de estoque")
+    
+    movimentacao_id = result[0][0]
+    
+    # Atualiza a quantidade do produto baseado na movimentação
+    if dados.get('tipo_movimentacao') == 'ENTRADA':
+        sql_update = '''
+        UPDATE public.produtos 
+        SET quantidade = quantidade + %s,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = %s AND deleted_at IS NULL
+        '''
+    else:  # SAIDA
+        sql_update = '''
+        UPDATE public.produtos 
+        SET quantidade = quantidade - %s,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = %s AND deleted_at IS NULL
+        '''
+    
+    params_update = (dados.get('quantidade'), dados.get('produto_id'))
+    execute_query(sql_update, params_update)
+    
+    return movimentacao_id
+
+def excluir_movimentacao_estoque(id):
+    """Exclui uma movimentação de estoque (soft delete)"""
+    sql = '''
+    UPDATE public.movimentacoes_estoque 
+    SET deleted_at = CURRENT_TIMESTAMP
+    WHERE id = %s
+    '''
+    params = (id,)
+    execute_query(sql, params)
+
+#endregion
+
+
+def criar_tabela_estoque():
+    """Cria tabela de movimentações de estoque se não existir"""
+    check_sql = '''
+    SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_schema = 'public' 
+        AND table_name = 'movimentacoes_estoque'
+    );
+    '''
+    result = open_query(check_sql)
+    tabela_existe = result[0][0]
+
+    if not tabela_existe:
+        sql = '''
+        CREATE TABLE public.movimentacoes_estoque (
+            id SERIAL PRIMARY KEY,
+            produto_id INTEGER NOT NULL REFERENCES public.produtos(id),
+            tipo_movimentacao VARCHAR(20) NOT NULL CHECK (tipo_movimentacao IN ('ENTRADA', 'SAIDA')),
+            quantidade DECIMAL(10,3) NOT NULL,
+            tipo_entrada VARCHAR(20) CHECK (tipo_entrada IN ('MANUAL', 'COMPRA')),
+            observacao TEXT,
+            data_movimentacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            deleted_at TIMESTAMP
+        );
+        
+        CREATE INDEX idx_movimentacoes_produto ON public.movimentacoes_estoque(produto_id);
+        CREATE INDEX idx_movimentacoes_data ON public.movimentacoes_estoque(data_movimentacao);
+        '''
+        execute_query(sql)
+        logging.info('Tabela de movimentações de estoque criada com sucesso')
+    else:
+        logging.info('Tabela de movimentações de estoque já existe')
 
 if __name__ == '__main__':
     criar_tabela_produtos()
+    criar_tabela_estoque()
 

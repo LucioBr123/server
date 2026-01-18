@@ -48,7 +48,18 @@
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .alert { padding: 10px 15px; border-radius: 4px; margin-bottom: 15px; }
         .alert-success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
-        .alert-error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+.alert-error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .stats-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
+        .stat-card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); text-align: center; }
+        .stat-card h3 { margin: 0 0 10px 0; color: var(--dark); font-size: 1rem; }
+        .stat-card p { margin: 0; font-size: 1.5rem; font-weight: bold; color: var(--primary); }
+        .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px; }
+        .filter-controls { display: flex; align-items: center; gap: 10px; }
+        .saldo-positivo { color: var(--secondary); font-weight: bold; }
+        .saldo-zero { color: #666; }
+        .saldo-negativo { color: var(--danger); font-weight: bold; }
+        .btn-secondary { background-color: #6c757d; color: white; }
+        .btn-dark { background-color: #343a40; color: white; }
         @media (max-width: 768px) {
             .form-row { flex-direction: column; gap: 0; }
             th, td { padding: 8px 5px; font-size: 0.9rem; }
@@ -67,26 +78,34 @@
 <div class="nav-tabs">
     <button class="tab-btn active" data-tab="dashboard">Dashboard</button>
     <button class="tab-btn" data-tab="produtos">Produtos</button>
+    <button class="tab-btn" data-tab="estoque">Estoque</button>
     <button class="tab-btn" data-tab="receitas">Receitas</button>
     <button class="tab-btn" data-tab="orcamentos">Orçamentos</button>
 </div>
 
 <div class="container">
-    <!-- Dashboard -->
+<!-- Dashboard -->
     <div id="dashboard" class="tab-content active">
         <h2>Visão Geral</h2>
         <div class="stats-container">
             <div class="stat-card"><h3>Total de Produtos</h3><p id="total-produtos">0</p></div>
             <div class="stat-card"><h3>Total de Receitas</h3><p id="total-receitas">0</p></div>
             <div class="stat-card"><h3>Total de Orçamentos</h3><p id="total-orcamentos">0</p></div>
+            <div class="stat-card"><h3>Produtos com Estoque Crítico</h3><p id="produtos-estoque-critico">0</p></div>
+            <div class="stat-card"><h3>Entradas no Estoque Hoje</h3><p id="entradas-hoje-dashboard">0</p></div>
+            <div class="stat-card"><h3>Valor Total do Estoque</h3><p id="valor-total-estoque">R$ 0,00</p></div>
         </div>
         <div class="recent-section">
             <h3>Últimos Produtos</h3>
             <div id="recent-products" class="loading"><div class="spinner"></div></div>
         </div>
+        <div class="recent-section">
+            <h3>Últimas Movimentações de Estoque</h3>
+            <div id="recent-movimentacoes" class="loading"><div class="spinner"></div></div>
+        </div>
     </div>
 
-    <!-- Produtos -->
+<!-- Produtos -->
     <div id="produtos" class="tab-content">
         <div class="page-header">
             <h2>Gestão de Produtos</h2>
@@ -97,6 +116,50 @@
         </div>
         <div id="alert-produtos"></div>
         <div id="produtos-list" class="loading"><div class="spinner"></div></div>
+    </div>
+
+    <!-- Estoque -->
+    <div id="estoque" class="tab-content">
+        <div class="page-header">
+            <h2>Controle de Estoque</h2>
+            <div>
+                <button class="btn btn-success" onclick="loadSaldoEstoque()">Atualizar Saldos</button>
+                <button class="btn btn-primary" id="btn-entrada-estoque">Entrada de Produto</button>
+                <button class="btn btn-secondary" id="btn-historico-estoque">Histórico de Movimentações</button>
+            </div>
+        </div>
+        <div id="alert-estoque"></div>
+        
+        <!-- Cards de Estatísticas -->
+        <div class="stats-container" style="margin-bottom: 20px;">
+            <div class="stat-card">
+                <h3>Produtos com Estoque Baixo</h3>
+                <p id="produtos-estoque-baixo">0</p>
+            </div>
+            <div class="stat-card">
+                <h3>Produtos com Estoque Negativo</h3>
+                <p id="produtos-estoque-negativo">0</p>
+            </div>
+            <div class="stat-card">
+                <h3>Total de Entradas Hoje</h3>
+                <p id="entradas-hoje">0</p>
+            </div>
+        </div>
+
+        <!-- Tabela de Saldos -->
+        <div class="section-header">
+            <h3>Saldo Atual dos Produtos</h3>
+            <div class="filter-controls">
+                <input type="text" id="filtro-produto-estoque" placeholder="Filtrar por produto..." style="padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                <select id="filtro-saldo" style="padding: 8px; border: 1px solid #ddd; border-radius: 4px; margin-left: 10px;">
+                    <option value="">Todos os saldos</option>
+                    <option value="positivo">Positivo</option>
+                    <option value="zero">Zero</option>
+                    <option value="negativo">Negativo</option>
+                </select>
+            </div>
+        </div>
+        <div id="saldo-estoque-list" class="loading"><div class="spinner"></div></div>
     </div>
 
     <!-- Receitas -->
@@ -298,6 +361,79 @@
     <div id="orcamento-total-list" style="margin-top:15px;"></div>
 </div>
 </div>
+
+<!-- Modal Entrada de Estoque -->
+<div id="entrada-estoque-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Entrada de Produto no Estoque</h3>
+            <button class="close-modal">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="entrada-estoque-form">
+                <div class="form-group">
+                    <label for="entrada-produto">Produto</label>
+                    <select id="entrada-produto" required></select>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="entrada-quantidade">Quantidade</label>
+                        <input type="number" step="0.001" id="entrada-quantidade" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="entrada-tipo">Tipo de Entrada</label>
+                        <select id="entrada-tipo" required>
+                            <option value="">Selecione...</option>
+                            <option value="MANUAL">Manual</option>
+                            <option value="COMPRA">Compra</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="entrada-observacao">Observação</label>
+                    <textarea id="entrada-observacao" rows="3" placeholder="Observações sobre a entrada..."></textarea>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button class="btn" id="btn-cancel-entrada">Cancelar</button>
+            <button class="btn btn-primary" id="btn-save-entrada">Registrar Entrada</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Histórico de Movimentações -->
+<div id="historico-estoque-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Histórico de Movimentações de Estoque</h3>
+            <button class="close-modal">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-row" style="margin-bottom: 15px;">
+                <div class="form-group">
+                    <label for="filtro-produto-historico">Filtrar por Produto</label>
+                    <select id="filtro-produto-historico">
+                        <option value="">Todos os produtos</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="filtro-tipo-movimentacao">Tipo de Movimentação</label>
+                    <select id="filtro-tipo-movimentacao">
+                        <option value="">Todos</option>
+                        <option value="ENTRADA">Entrada</option>
+                        <option value="SAIDA">Saída</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>&nbsp;</label>
+                    <button class="btn btn-primary" onclick="loadMovimentacoesEstoque()">Filtrar</button>
+                </div>
+            </div>
+            <div id="historico-estoque-list" class="loading"><div class="spinner"></div></div>
+        </div>
+    </div>
+</div>
 <script>
 const API_BASE_URL = window.location.origin + '/';
 let produtosCache = [];
@@ -322,6 +458,7 @@ tabBtns.forEach(btn => {
         const tabId = btn.getAttribute('data-tab');
         document.getElementById(tabId).classList.add('active');
         if (tabId === 'produtos') loadProdutos();
+        if (tabId === 'estoque') loadSaldoEstoque();
         if (tabId === 'receitas') loadReceitas();
         if (tabId === 'orcamentos') loadOrcamentos();
     });
@@ -796,15 +933,226 @@ async function viewOrcamentoTotal(orcamentoId) {
     }
 }
 
+/* Estoque */
+let saldosEstoqueCache = [];
+let movimentacoesEstoqueCache = [];
+
+async function loadSaldoEstoque() {
+    const container = document.getElementById('saldo-estoque-list');
+    container.innerHTML = '<div class="spinner"></div>';
+    try {
+        const data = await apiRequest('estoque/saldo');
+        saldosEstoqueCache = data.saldos;
+        renderSaldoEstoque(saldosEstoqueCache);
+        updateEstoqueStats(saldosEstoqueCache);
+    } catch (e) {
+        container.innerHTML = `<div class="alert alert-error">${e.message}</div>`;
+    }
+}
+
+function renderSaldoEstoque(saldos) {
+    const container = document.getElementById('saldo-estoque-list');
+    const filtroTexto = document.getElementById('filtro-produto-estoque').value.toLowerCase();
+    const filtroSaldo = document.getElementById('filtro-saldo').value;
+    
+    let saldosFiltrados = saldos.filter(saldo => {
+        const matchTexto = !filtroTexto || saldo.descricao.toLowerCase().includes(filtroTexto);
+        let matchSaldo = true;
+        
+        if (filtroSaldo === 'positivo') matchSaldo = saldo.saldo_total > 0;
+        else if (filtroSaldo === 'zero') matchSaldo = saldo.saldo_total === 0;
+        else if (filtroSaldo === 'negativo') matchSaldo = saldo.saldo_total < 0;
+        
+        return matchTexto && matchSaldo;
+    });
+    
+    if (saldosFiltrados.length > 0) {
+        let html = `<table><thead><tr>
+            <th>Produto</th><th>Quantificação</th><th>Saldo Inicial</th><th>Movimentações</th><th>Saldo Total</th><th>Status</th>
+        </tr></thead><tbody>`;
+        
+        saldosFiltrados.forEach(saldo => {
+            const saldoClass = saldo.saldo_total > 0 ? 'saldo-positivo' : 
+                              saldo.saldo_total < 0 ? 'saldo-negativo' : 'saldo-zero';
+            const statusText = saldo.saldo_total > 0 ? 'Positivo' : 
+                             saldo.saldo_total < 0 ? 'Negativo' : 'Zero';
+            
+            html += `<tr>
+                <td>${saldo.descricao}</td>
+                <td>${saldo.quantificacao}</td>
+                <td>${saldo.quantidade_inicial}</td>
+                <td>${saldo.saldo_movimentacoes > 0 ? '+' : ''}${saldo.saldo_movimentacoes}</td>
+                <td class="${saldoClass}">${saldo.saldo_total}</td>
+                <td><span class="badge ${saldoClass}">${statusText}</span></td>
+            </tr>`;
+        });
+        
+        html += '</tbody></table>';
+        container.innerHTML = html;
+    } else {
+        container.innerHTML = '<p>Nenhum produto encontrado com os filtros selecionados</p>';
+    }
+}
+
+async function loadMovimentacoesEstoque() {
+    const container = document.getElementById('historico-estoque-list');
+    container.innerHTML = '<div class="spinner"></div>';
+    
+    try {
+        const produtoId = document.getElementById('filtro-produto-historico').value;
+        const tipoMovimentacao = document.getElementById('filtro-tipo-movimentacao').value;
+        
+        let url = 'estoque/movimentacoes';
+        const params = new URLSearchParams();
+        if (produtoId) params.append('produto_id', produtoId);
+        if (tipoMovimentacao) params.append('tipo', tipoMovimentacao);
+        if (params.toString()) url += '?' + params.toString();
+        
+        const data = await apiRequest(url);
+        movimentacoesEstoqueCache = data.movimentacoes;
+        renderMovimentacoesEstoque(movimentacoesEstoqueCache);
+    } catch (e) {
+        container.innerHTML = `<div class="alert alert-error">${e.message}</div>`;
+    }
+}
+
+function renderMovimentacoesEstoque(movimentacoes) {
+    const container = document.getElementById('historico-estoque-list');
+    
+    if (movimentacoes.length > 0) {
+        let html = `<table><thead><tr>
+            <th>Data</th><th>Produto</th><th>Tipo</th><th>Quantidade</th><th>Tipo Entrada</th><th>Observação</th>
+        </tr></thead><tbody>`;
+        
+        movimentacoes.forEach(mov => {
+            const tipoClass = mov.tipo_movimentacao === 'ENTRADA' ? 'saldo-positivo' : 'saldo-negativo';
+            
+            html += `<tr>
+                <td>${mov.data_movimentacao}</td>
+                <td>${mov.produto_descricao}</td>
+                <td class="${tipoClass}">${mov.tipo_movimentacao}</td>
+                <td>${mov.quantidade}</td>
+                <td>${mov.tipo_entrada || '-'}</td>
+                <td>${mov.observacao || '-'}</td>
+            </tr>`;
+        });
+        
+        html += '</tbody></table>';
+        container.innerHTML = html;
+    } else {
+        container.innerHTML = '<p>Nenhuma movimentação encontrada</p>';
+    }
+}
+
+function updateEstoqueStats(saldos) {
+    const estoqueBaixo = saldos.filter(s => s.saldo_total >= 0 && s.saldo_total <= 1).length;
+    const estoqueNegativo = saldos.filter(s => s.saldo_total < 0).length;
+    
+    document.getElementById('produtos-estoque-baixo').textContent = estoqueBaixo;
+    document.getElementById('produtos-estoque-negativo').textContent = estoqueNegativo;
+}
+
+async function openEntradaEstoqueModal() {
+    const modal = document.getElementById('entrada-estoque-modal');
+    
+    // Carrega produtos para o select
+    await loadProdutos();
+    const select = document.getElementById('entrada-produto');
+    select.innerHTML = produtosCache
+        .map(p => `<option value="${p.id}">${p.descricao} - ${p.quantificacao}</option>`)
+        .join('');
+    
+    document.getElementById('entrada-estoque-form').reset();
+    modal.style.display = 'flex';
+}
+
+async function saveEntradaEstoque() {
+    const movimentacao = {
+        produto_id: parseInt(document.getElementById('entrada-produto').value),
+        tipo_movimentacao: 'ENTRADA',
+        quantidade: parseFloat(document.getElementById('entrada-quantidade').value),
+        tipo_entrada: document.getElementById('entrada-tipo').value,
+        observacao: document.getElementById('entrada-observacao').value
+    };
+    
+    try {
+        await apiRequest('estoque/movimentacoes', 'POST', movimentacao);
+        document.getElementById('entrada-estoque-modal').style.display = 'none';
+        loadSaldoEstoque();
+        loadDashboardData();
+    } catch (e) {
+        alert(e.message);
+    }
+}
+
+async function openHistoricoEstoqueModal() {
+    const modal = document.getElementById('historico-estoque-modal');
+    
+    // Carrega produtos para o filtro
+    await loadProdutos();
+    const select = document.getElementById('filtro-produto-historico');
+    select.innerHTML = '<option value="">Todos os produtos</option>' +
+        produtosCache.map(p => `<option value="${p.id}">${p.descricao}</option>`).join('');
+    
+    await loadMovimentacoesEstoque();
+    modal.style.display = 'flex';
+}
+
 /* Dashboard */
 async function loadDashboardData() {
     try {
         const produtosData = await apiRequest('produtos');
         document.getElementById('total-produtos').textContent = produtosData.produtos.length;
+        
         const receitasData = await apiRequest('receitas');
         document.getElementById('total-receitas').textContent = receitasData.receitas.length;
+        
         const orcamentosData = await apiRequest('orcamento');
         document.getElementById('total-orcamentos').textContent = orcamentosData.orcamento.length;
+        
+        // Carrega dados de estoque para o dashboard
+        try {
+            const saldosData = await apiRequest('estoque/saldo');
+            const saldos = saldosData.saldos;
+            
+            // Produtos com estoque crítico (negativo ou zero)
+            const estoqueCritico = saldos.filter(s => s.saldo_total <= 0).length;
+            document.getElementById('produtos-estoque-critico').textContent = estoqueCritico;
+            
+            // Valor total do estoque
+            const valorTotal = saldos.reduce((total, saldo) => {
+                return total + (saldo.saldo_total * saldo.valor_unitario);
+            }, 0);
+            document.getElementById('valor-total-estoque').textContent = `R$ ${valorTotal.toFixed(2)}`;
+            
+            // Entradas hoje
+            const hoje = new Date().toISOString().split('T')[0];
+            const movimentacoesData = await apiRequest('estoque/movimentacoes');
+            const entradasHoje = movimentacoesData.movimentacoes.filter(m => 
+                m.tipo_movimentacao === 'ENTRADA' && 
+                m.data_movimentacao.startsWith(hoje)
+            ).length;
+            document.getElementById('entradas-hoje-dashboard').textContent = entradasHoje;
+            
+            // Últimas movimentações
+            const recentMov = document.getElementById('recent-movimentacoes');
+            const ultimasMov = movimentacoesData.movimentacoes.slice(0, 5);
+            if (ultimasMov.length > 0) {
+                let html = '<ul>';
+                ultimasMov.forEach(mov => {
+                    const tipoClass = mov.tipo_movimentacao === 'ENTRADA' ? 'text-success' : 'text-danger';
+                    html += `<li>${mov.data_movimentacao} - ${mov.produto_descricao}: <span class="${tipoClass}">${mov.tipo_movimentacao}</span> ${mov.quantidade}</li>`;
+                });
+                html += '</ul>';
+                recentMov.innerHTML = html;
+            } else {
+                recentMov.innerHTML = '<p>Nenhuma movimentação recente</p>';
+            }
+        } catch (e) {
+            console.error('Erro ao carregar dados de estoque:', e);
+        }
+        
+        // Produtos recentes
         const recentProducts = document.getElementById('recent-products');
         if (produtosData.produtos.length > 0) {
             let html = '<ul>';
@@ -825,12 +1173,33 @@ async function loadDashboardData() {
 document.addEventListener('DOMContentLoaded', () => {
     updateCurrentDate();
     loadDashboardData();
+    
+    // Produtos
     document.getElementById('btn-add-produto').addEventListener('click', () => openProdutoModal());
     document.getElementById('btn-save-produto').addEventListener('click', saveProduto);
+    
+    // Estoque
+    document.getElementById('btn-entrada-estoque').addEventListener('click', openEntradaEstoqueModal);
+    document.getElementById('btn-historico-estoque').addEventListener('click', openHistoricoEstoqueModal);
+    document.getElementById('btn-save-entrada').addEventListener('click', saveEntradaEstoque);
+    
+    // Filtros de estoque
+    document.getElementById('filtro-produto-estoque').addEventListener('input', () => {
+        if (saldosEstoqueCache.length > 0) renderSaldoEstoque(saldosEstoqueCache);
+    });
+    document.getElementById('filtro-saldo').addEventListener('change', () => {
+        if (saldosEstoqueCache.length > 0) renderSaldoEstoque(saldosEstoqueCache);
+    });
+    
+    // Receitas
     document.getElementById('btn-add-receita').addEventListener('click', () => openReceitaModal());
     document.getElementById('btn-save-receita').addEventListener('click', saveReceita);
+    
+    // Orçamentos
     document.getElementById('btn-add-orcamento').addEventListener('click', () => openOrcamentoModal());
     document.getElementById('btn-save-orcamento').addEventListener('click', saveOrcamento);
+    
+    // Modais
     document.querySelectorAll('.close-modal, .btn[id^="btn-cancel"]').forEach(btn => {
         btn.addEventListener('click', () => {
             document.querySelectorAll('.modal').forEach(m => m.style.display = 'none');
@@ -847,4 +1216,10 @@ window.viewReceitaItens = viewReceitaItens;
 window.openOrcamentoModal = openOrcamentoModal;
 window.deleteOrcamento = deleteOrcamento;
 window.viewOrcamentoDetalhes = viewOrcamentoDetalhes;
+window.loadSaldoEstoque = loadSaldoEstoque;
+window.loadMovimentacoesEstoque = loadMovimentacoesEstoque;
+window.addReceitaItem = addReceitaItem;
+window.deleteReceitaItem = deleteReceitaItem;
+window.addReceitaAoOrcamento = addReceitaAoOrcamento;
+window.deleteReceitaDoOrcamento = deleteReceitaDoOrcamento;
 </script>

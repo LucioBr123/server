@@ -1,6 +1,6 @@
 @echo off
 REM Vai para a pasta do projeto
-cd /d C:\GIT\OrcamentosBolos\python\server
+cd /d D:\GIT\OrcamentosBolos\python\server
 
 REM Ativa o virtualenv
 call venv\Scripts\activate.bat
@@ -11,7 +11,7 @@ for /f "tokens=2 delims=:" %%a in ('ipconfig ^| findstr /R "IPv4"') do (
 )
 REM Remove espaços do começo do IP
 set IP=%IP: =%
-echo Servidor rodando na rede local em http://%IP%:5000
+echo Servidor rodando na rede local em http://%IP%:5080
 
 REM Roda o app e grava log
 python src\app.py >> server_log.txt 2>&1
