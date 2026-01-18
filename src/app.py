@@ -16,5 +16,5 @@ def create_app():
 if __name__ == '__main__':
     from waitress import serve
     app = create_app()
-    print("Servidor rodando na rede local em http://0.0.0.0:5000")
-    serve(app, host='0.0.0.0', port=5000)
+    print("Servidor rodando na rede local em http://0.0.0.0:5080")
+    serve(app, host='0.0.0.0', port=5080)

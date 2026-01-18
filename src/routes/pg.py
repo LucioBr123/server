@@ -379,7 +379,12 @@ def excluir_item_receita(id):
 
 def obtem_produtos():
     sql = '''
-    SELECT id, descricao, quantidade, quantificacao, valor_unitario, deleted_at
+    SELECT id
+         , descricao
+         , quantidade
+         , quantificacao
+         , valor_unitario
+         , ean
       FROM public.produtos
      where deleted_at is null 
      order by id desc;
@@ -394,7 +399,8 @@ def obtem_produtos():
             'descricao': resultado[1],
             'quantidade': float(resultado[2]) if resultado[2] else 0,
             'quantificacao': resultado[3],
-            'valor_unitario': float(resultado[4]) if resultado[4] else 0
+            'valor_unitario': float(resultado[4]) if resultado[4] else 0,
+            'ean': resultado[5] if resultado[5] else ''
         })
     
     return produtos

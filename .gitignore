@@ -3,3 +3,4 @@ venv
 clean_cache.py
 __pycache__/
 server_log.txt
+*.jpg
